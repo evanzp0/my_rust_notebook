@@ -197,11 +197,13 @@ error[E0502]: cannot borrow `params` as immutable because it is also borrowed as
 **标注下生命周期**
 
 ```
-'a {
+'a == 'b == 'self {
     let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
-    'b {
-        // sql 这个变量不用看，在build_sql() 被调用时传入 &mut params 会生成一个匿名对象，该对象会引入 'b 生命周期范围，该范围内该对象有权对 param 进行可变借用
-        let sql= self.build_sql(&'b mut params); 
+    { // 'b 一开始在这里，后来被向上提升了
+        // 在build_sql() 被调用时传入 &mut params 会生成一个匿名对象，该对象会引入 'b 生命周期范围，该范围内该对象有权对 param 进行可变借用,
+        // 而 build_sql(&'a self,  params: &'a ...) 把 param 的生命周期范围和 &self 的生命周期 'self 关联上了，
+        // 编译器就认为，这个 'b == 'self
+        let sql = self.build_sql(&'b mut params); 
         'c {
             // &'b mut params 的匿名对象在 'b 生命周期范围内对 params 有权进行可变借用，所以，再进行生成 &param 对应的匿名对象进行不可变借用时就出错了
             let rst = self.base_dao.fetch_i64(&'_ sql, &'b params).await?;
@@ -236,10 +238,10 @@ impl<'a> TaskQuery<'a> {
 ```
 'a == 'self? {
     let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
-    'b {
+    'b { // &mut params 传参时引入的匿名生命周期
         let sql= self.build_sql(&'b mut params); 
     }
-    'c {
+    'c {  // &params 传参时引入的匿名生命周期，&sql 的生命周期和当前讨论问题无关所以我简化成匿名生命周期了
         let rst = self.base_dao.fetch_i64(&'_ sql, &'c params).await?;
     }
 }
