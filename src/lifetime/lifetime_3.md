@@ -156,3 +156,92 @@ error[E0502]: cannot borrow `s2` as immutable because it is also borrowed as mut
 
 - 上面的生命周期范围 `'b` 和 `'c` 出现了互相交错的现象
 - 在 'c 的生命周期范围里，`s3` 对 `s2` 进行了 reborrow，所以编译器认为 `s3` 在该范围内对应 `s2` 有权使用可变借用，因此当 `s5` 在该范围 `'c` 中对 `s2` 再次进行不可变借用时，借用规则被破坏
+
+
+### 代码示例 4 (这是我实际开发中遇到的问题)
+
+```rust
+impl<'a> TaskQuery<'a> {
+
+    fn build_sql(&'a self, params: &'a mut Vec<&'a (dyn ToSql + Sync)>) -> String { 
+        ...
+    }
+    
+    pub async fn fetch_count(&self) -> Result<i64> {
+        let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let sql= self.build_sql(&mut params);
+        let rst = self.base_dao.fetch_i64(&sql, &params).await?;
+    
+        Ok(rst)
+    }
+    
+}
+
+```
+
+**系统提示:**
+
+```console
+error[E0502]: cannot borrow `params` as immutable because it is also borrowed as mutable
+   --> src/manager/engine/query/task_query.rs:109:49
+    |
+108 |         let sql= self.build_sql(&mut params);
+    |                                 ----------- mutable borrow occurs here
+109 |         let rst = self.base_dao.fetch_i64(&sql, &params).await?;
+    |                                                 ^^^^^^^
+    |                                                 |
+    |                                                 immutable borrow occurs here
+    |                                                 mutable borrow later used here
+```
+
+**标注下生命周期**
+
+```
+'a == 'self? {
+    let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
+    'b {
+        // sql 这个变量不用看，主要是 build_sql() 中声明了 param 的生命周期 ‘b 和 self 一样长，虽说这样本来就是不合理的
+        let sql= self.build_sql(&'b mut params); 
+        'c {
+            // &'b mut params 的匿名对象在 'b 生命周期范围内对 params 有权进行可变借用，所以，再进行生成 &param 对应的匿名对象进行不可变借用时就出错了
+            let rst = self.base_dao.fetch_i64(&'_ sql, &'b params).await?;
+        }
+        
+    }
+}
+```
+
+**改成下面这样, 去掉`build_sql()`中`params`的生命周期标注`'a`，就能通过了**
+
+```rust
+impl<'a> TaskQuery<'a> {
+
+    fn build_sql(&'a self, params: &mut Vec<&'a (dyn ToSql + Sync)>) -> String { 
+    
+    }
+    
+    pub async fn fetch_count(&self) -> Result<i64> {
+        let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let sql= self.build_sql(&mut params);
+        let rst = self.base_dao.fetch_i64(&sql, &params).await?;
+    
+        Ok(rst)
+    }
+    
+}
+```
+
+**标注下生命周期**
+
+```
+'a == 'self? {
+    let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
+    'b {
+        let sql= self.build_sql(&'b mut params); 
+    }
+    'c {
+        let rst = self.base_dao.fetch_i64(&'_ sql, &'c params).await?;
+    }
+}
+```
+
