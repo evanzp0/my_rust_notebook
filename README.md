@@ -1,1 +1,5 @@
-# my_rust_notebook
+# Rust 学习笔记
+记录 rust 学习中的点点滴滴
+
+## 目录
+- 关于 rust 生命周期范围
