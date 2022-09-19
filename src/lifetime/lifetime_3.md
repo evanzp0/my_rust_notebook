@@ -197,10 +197,10 @@ error[E0502]: cannot borrow `params` as immutable because it is also borrowed as
 **标注下生命周期**
 
 ```
-'a == 'self? {
+'a {
     let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
     'b {
-        // sql 这个变量不用看，主要是 build_sql() 中声明了 param 的生命周期 ‘b 和 self 一样长，虽说这样本来就是不合理的
+        // sql 这个变量不用看，在build_sql() 被调用时传入 &mut params 会生成一个匿名对象，该对象会引入 'b 生命周期范围，该范围内该对象有权对 param 进行可变借用
         let sql= self.build_sql(&'b mut params); 
         'c {
             // &'b mut params 的匿名对象在 'b 生命周期范围内对 params 有权进行可变借用，所以，再进行生成 &param 对应的匿名对象进行不可变借用时就出错了
