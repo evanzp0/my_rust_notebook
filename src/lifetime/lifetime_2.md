@@ -1,6 +1,6 @@
 # 关于 Rust 生命周期范围（2 / 3）
 ### 代码示例 1
-```rust{.line-numbers}
+```
 fn main() {
     let mut s1 = String::from("Rust");
     let s2 = &mut s1;
