@@ -247,3 +247,54 @@ impl<'a> TaskQuery<'a> {
 }
 ```
 
+### 代码示例 5 (对象中存在引用)
+
+```rust
+#[derive(Debug)]
+struct A<'a>(&'a i32, i32 );
+
+fn foo<'a>(el : &'a mut A<'a>) {
+
+}
+
+fn main() {
+    let a = 1;
+    let mut b = A(&a, 2);
+    foo(&mut b);
+    let c = &mut b;
+    println!("{:?}", b);
+}
+```
+
+**系统提示:**
+
+```console
+error[E0499]: cannot borrow `b` as mutable more than once at a time
+  --> src\main.rs:12:13
+   |
+11 |     foo(&mut b);
+   |         ------ first mutable borrow occurs here
+12 |     let c = &mut b;
+   |             ^^^^^^
+   |             |
+   |             second mutable borrow occurs here
+   |             first borrow later used here
+
+error[E0502]: cannot borrow `b` as immutable because it is also borrowed as mutable
+  --> src\main.rs:13:22
+   |
+11 |     foo(&mut b);
+   |         ------ mutable borrow occurs here
+12 |     let c = &mut b;
+13 |     println!("{:?}", b);
+   |                      ^
+   |                      |
+   |                      immutable borrow occurs here
+   |                      mutable borrow later used here
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+```
+将 `fn foo<'a>(el : &'a mut A<'a>)` 这一行改成如下一种才能编译通过：
+1. `fn foo<'a>(el : &'a A<'a>)`
+2. `fn foo<'a>(el : &'a mut A<'_>)`
+目前还弄不清楚为什么，只能作为一种模式去记住，就是： 向函数传入引用生成匿名对象引入的生命周期范围，应该尽可能小（函数结束时就结束），但是该生命周期范围会在返回值的生命周期范围影响下延展，特别的 &mut 会被引用对象成员生命周期范围的影响而延展

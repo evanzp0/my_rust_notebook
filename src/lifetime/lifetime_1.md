@@ -9,7 +9,7 @@ fn main() {
      let s1 = String::from("Rust");
      let s1_r = &s1;
      {
-         let s2 = String::from("C");
+        let mut s2 = String::from("C");
         let res = the_longest(s1_r, &s2);
         let s3 = &mut s2;
         println!("{}", res);
@@ -30,13 +30,15 @@ fn main() {
             'd {
                 'e {
                     'f {
+                        // &'e s2, 可以看成在实参传入函数时生成了一个匿名对象，并指明在 'e 范围内该匿名对象有权安全引用 s2
                         // 根据函数输入输出的生命周期标注规则（输出生命周期<=输入生命周期中最小的那个），'e >= 'f
-                        let res: &'f str = the_longest(s1_r, &'e s2);  //&'e s2, 可以看成在实参传入函数时生成了一个匿名对象，并指明在 'e 范围内该匿名对象有权安全引用 s2 
+                        let res: &'f str = the_longest(s1_r, &'e s2);  
                         'g {
                             // 借用检查器发现 'e 内（匿名对象对s2的有不可变借用权的生命周期范围内）出现了对 s2 的可变借用，因此判定违背了借用规则
                             let s3 = &'g mut s2; // error!
                             'h {
-                                /// println!() 宏会调用 &res，此时会创建一个匿名的生命周期范围 'h
+                                // println!() 宏会调用 &res，此时会创建一个匿名的生命周期范围 'h
+                                // 因为之前已经判定 'e >= 'f ，使用了 &res 对应生命周期 'f，所以 'e 的生命周期也被延展到此 print() 结束后才结束
                                 println!("{}", &'h res);
                             }
                         }
