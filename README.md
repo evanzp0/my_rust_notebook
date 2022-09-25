@@ -6,3 +6,5 @@
     - [关于 Rust 生命周期范围（1 / 3）](src/lifetime/lifetime_1.md)
     - [关于 Rust 生命周期范围（2 / 3）](src/lifetime/lifetime_2.md)
     - [关于 Rust 生命周期范围（3 / 3）](src/lifetime/lifetime_3.md)
+- 内存分配和对齐
+    - [Enum的内存分布](src/mem_alloc_and_align/enum.md)
