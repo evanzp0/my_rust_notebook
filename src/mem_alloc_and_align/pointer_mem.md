@@ -1,3 +1,6 @@
+### 指针和内存
+
+```rust
 use std::mem::size_of;
 
 static B: [u8; 10] = [1, 2, 3, 4, 5, 6, 7, 8,  9, 10];
@@ -17,3 +20,4 @@ fn main() {
     println!("C 的大小 {:?}", size_of::<[u8;11]>());
     println!("C 所在地址 {:p}", &C);
 }
+```
