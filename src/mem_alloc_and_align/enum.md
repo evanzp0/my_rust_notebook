@@ -35,6 +35,14 @@ enum D<'a> {
     World(&'a u16) // 8 bytes
 }
 ```
+在 Rust 中，有许多类型会包含不可为空的指针，如Box<T>、Vec<T>、String、&T和&mut T。同样地，我们可以想象嵌套的枚举将它们的标记集中到一个单一的字段中，因为根据定义，它们的有效值范围有限。
+
+```rust
+    println!("{}", core::mem::size_of::<Option<Vec<u8>>>()); // 24 bytes
+    println!("{}", core::mem::size_of::<Vec<u8>>()); // 24 bytes
+    println!("{}", core::mem::size_of::<Option<Box<String>>>()); // 8 bytes
+    println!("{}", core::mem::size_of::<Box<String>>()); // 8 bytes
+```
 
 - `enum` 都有关联值时：
 ```rust

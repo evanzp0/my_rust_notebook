@@ -27,7 +27,10 @@ fn main() {
     // println!("{}",a.len());
     // println!("{:?}", check_size(["hello你好";69]));
 
-    println!("{}", core::mem::size_of::<C>());
+    println!("{}", core::mem::size_of::<Option<Vec<u8>>>()); // 24 bytes
+    println!("{}", core::mem::size_of::<Vec<u8>>()); // 24 bytes
+    println!("{}", core::mem::size_of::<Option<Box<String>>>()); // 8 bytes
+    println!("{}", core::mem::size_of::<Box<String>>()); // 8 bytes
 
     // println!("{}", core::mem::size_of::<C>());
     // println!("{}", core::mem::size_of::<D>());
