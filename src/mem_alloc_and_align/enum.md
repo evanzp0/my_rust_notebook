@@ -35,3 +35,19 @@ enum D<'a> {
     World(&'a u16) // 8 bytes
 }
 ```
+
+- `enum` 都有关联值时：
+```rust
+enum Foo {
+    A(u32),
+    B(u64),
+    C(u8),
+}
+```
+可能会被布局成：
+```rust
+struct FooRepr {
+    data: u64, // 根据 tag 的不同，这一项可以为 u64，u32，或者 u8
+    tag: u8,   // 0 = A，1 = B， 2 = C
+}
+```
