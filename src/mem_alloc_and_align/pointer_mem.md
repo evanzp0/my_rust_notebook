@@ -21,3 +21,17 @@ fn main() {
     println!("C 所在地址 {:p}", &C);
 }
 ```
+Box智能指针的内存分配，Box::leak() 后返回的堆上的对象是'static 的，无法被回收
+```rust
+    let s = "abcde".to_owned();
+    println!("s addr: {:p}", &s);
+    let s1 = s.as_ptr();
+    println!("s raw addr: {:p}", s1);
+    let a = Box::new(s);
+    println!("a point to addr: {:p}", a);
+    println!("a point to addr: {:p}", &*a);
+    println!("a raw addr: {:p}", (*a).as_ptr());
+    let b = Box::leak(a);
+    println!("b point to addr: {:p}", b);
+    println!("b raw addr: {:p}", b.as_ptr());
+```
