@@ -1,3 +1,5 @@
+use std::any::Any;
+use std::fmt::Display;
 use std::{mem::size_of, borrow::Cow};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -6,18 +8,53 @@ static B: [u8; 10] = [99, 97, 114, 114, 121, 116, 111, 119,  101, 108];
 static C: [u8; 11] = [116, 104, 97, 110, 107, 115, 102, 105,  115, 104, 0];
 
 fn main() {
-    let s = "abcde".to_owned();
-    println!("s addr: {:p}", &s);
-    let s1 = s.as_ptr();
-    println!("s raw addr: {:p}", s1);
-    let a = Box::new(s);
-    println!("a point to addr: {:p}", a);
-    println!("a point to addr: {:p}", &*a);
-    println!("a raw addr: {:p}", (*a).as_ptr());
-    let b = Box::leak(a);
-    println!("b point to addr: {:p}", b);
-    println!("b raw addr: {:p}", b.as_ptr());
+    let a = |x: i32| {1};
+    meth(a)
 }
+
+fn meth<F>(f: F) where F: FnOnce(i32) -> i32 {
+    println!("{}", f(12))
+}
+
+// fn main() {
+//     thing_to_do(able_to_pass);
+
+//     let a = || {1;};
+
+//     thing_to_do(|| {
+//         println!("works!");
+//     });
+
+//     thing_to_do(a);
+// }
+
+fn thing_to_do<F: FnOnce()>(func: F) {
+    func();
+}
+
+fn able_to_pass() {
+    println!("works!");
+}
+
+struct A;
+
+impl A {
+    pub fn ma<T :Display>(&self, name: &str) -> Box<dyn Any> {
+        if name == "a" {
+            return Box::new("hello".to_owned());
+        }
+
+        return  Box::new(1);
+    }
+}
+
+impl Drop for A {
+    fn drop(&mut self) {
+        println!("drop A");
+    }
+}
+
+
 
 // fn leakit() -> &'static mut String {
 //     let s = "abcde".to_owned();
