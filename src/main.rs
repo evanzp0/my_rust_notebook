@@ -1,60 +1,125 @@
+// #![feature(negative_impls)]
+
+use std::collections::HashMap;
+use std::marker::{PhantomData, self};
+use std::panic;
 use std::any::Any;
 use std::fmt::Display;
+use std::ptr::NonNull;
+use std::sync::mpsc::{channel, sync_channel};
+use std::sync::{Arc, Mutex, Barrier, Condvar};
+use std::thread::{Builder, current, sleep};
+use std::time::Duration;
 use std::{mem::size_of, borrow::Cow};
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use std::cell::{Cell, RefCell};
+use std::thread;
 
 static B: [u8; 10] = [99, 97, 114, 114, 121, 116, 111, 119,  101, 108];
 static C: [u8; 11] = [116, 104, 97, 110, 107, 115, 102, 105,  115, 104, 0];
 
+#[derive(Debug)]
+struct Sa {
+    // a: *const i32
+    _data: PhantomData<NonNull<u8>>
+}
+
+struct Sb <Slayer>
+where Slayer : Display
+{
+    nm: Slayer,
+}
+
+// impl !Sync for Sa {
+    
+// }
+// unsafe impl Send for Sa{}
+
+use std::ops::Sub;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread::{ JoinHandle};
+use std::time::Instant;
+
+const N_TIMES: u64 = 10000000;
+const N_THREADS: usize = 10;
+
+static R: AtomicU64 = AtomicU64::new(0);
+
+fn add_n_times(n: u64) -> JoinHandle<()> {
+    thread::spawn(move || {
+        for _ in 0..n {
+            R.fetch_add(1, Ordering::Relaxed);
+        }
+    })
+}
+
+
 fn main() {
-    let a = |x: i32| {1};
-    meth(a)
+
+    let mut map = HashMap::new();
+    map.insert("a", 1);
+    map.values().filter()
+
+    let s = Instant::now();
+    let mut threads = Vec::with_capacity(N_THREADS);
+
+    for _ in 0..N_THREADS {
+        threads.push(add_n_times(N_TIMES));
+    }
+
+    for thread in threads {
+        thread.join().unwrap();
+    }
+
+    assert_eq!(N_TIMES * N_THREADS as u64, R.load(Ordering::Relaxed));
+
+    println!("{:?}",Instant::now().sub(s));
+
 }
 
-fn meth<F>(f: F) where F: FnOnce(i32) -> i32 {
-    println!("{}", f(12))
-}
+// thread_local!{static FOO: Cell<i32>  = Cell::new(1)};
 
-// fn main() {
-//     thing_to_do(able_to_pass);
+// FOO.with(|f| {
+//     assert_eq!(1, (*f).get());
+//     (*f).set(2);
+// });
 
-//     let a = || {1;};
-
-//     thing_to_do(|| {
-//         println!("works!");
+// thread::spawn(|| {
+//     FOO.with(|f| {
+//         assert_eq!(1, (*f).get());
+//         (*f).set(3);
 //     });
+// });
 
-//     thing_to_do(a);
+// FOO.with(|f| {
+//     assert_eq!(2, (*f).get());
+// });
+
+// let mut v = vec![];
+// let size: usize = 1024 * 1024;
+// for id in 1..10 {
+//     let thread_name = format!("t_{}", id);
+//     let bd = Builder::new().name(thread_name).stack_size(size);
+//     let child = bd.spawn(move || {
+//         println!("{}", id);
+
+//         if id == 3 {
+//             panic::catch_unwind(|| {
+//                 panic!("oh no!");
+//             }).ok();
+//         }
+//         println!("{}", current().name().unwrap());
+//     }).unwrap();
+//     v.push(child);
 // }
 
-fn thing_to_do<F: FnOnce()>(func: F) {
-    func();
-}
+// println!("before join");
+// for c in v {
+//     c.join();
+// }
 
-fn able_to_pass() {
-    println!("works!");
-}
-
-struct A;
-
-impl A {
-    pub fn ma<T :Display>(&self, name: &str) -> Box<dyn Any> {
-        if name == "a" {
-            return Box::new("hello".to_owned());
-        }
-
-        return  Box::new(1);
-    }
-}
-
-impl Drop for A {
-    fn drop(&mut self) {
-        println!("drop A");
-    }
-}
-
-
+// println!("main end");
 
 // fn leakit() -> &'static mut String {
 //     let s = "abcde".to_owned();
