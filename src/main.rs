@@ -57,24 +57,11 @@ fn add_n_times(n: u64) -> JoinHandle<()> {
 
 fn main() {
 
-    let mut map = HashMap::new();
-    map.insert("a", 1);
-    map.values().filter()
+    let (rs, rx) = channel::<i32>();
 
-    let s = Instant::now();
-    let mut threads = Vec::with_capacity(N_THREADS);
-
-    for _ in 0..N_THREADS {
-        threads.push(add_n_times(N_TIMES));
+    for i in 0..5 {
+        
     }
-
-    for thread in threads {
-        thread.join().unwrap();
-    }
-
-    assert_eq!(N_TIMES * N_THREADS as u64, R.load(Ordering::Relaxed));
-
-    println!("{:?}",Instant::now().sub(s));
 
 }
 
