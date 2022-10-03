@@ -1,70 +1,136 @@
+#![allow(unused)]
 // #![feature(negative_impls)]
 
-use std::collections::HashMap;
-use std::marker::{PhantomData, self};
-use std::panic;
-use std::any::Any;
-use std::fmt::Display;
-use std::ptr::NonNull;
-use std::sync::mpsc::{channel, sync_channel};
-use std::sync::{Arc, Mutex, Barrier, Condvar};
-use std::thread::{Builder, current, sleep};
-use std::time::Duration;
-use std::{mem::size_of, borrow::Cow};
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use std::cell::{Cell, RefCell};
-use std::thread;
+// use std::collections::HashMap;
+// use std::marker::{PhantomData, self};
+// use std::panic;
+// use std::any::Any;
+// use std::fmt::Display;
+// use std::ptr::NonNull;
+// use std::sync::mpsc::{channel, sync_channel};
+// use std::sync::{Arc, Mutex, Barrier, Condvar};
+// use std::thread::{Builder, current, sleep};
+// use std::time::Duration;
+// use std::{mem::size_of, borrow::Cow};
+// use std::ffi::CStr;
+// use std::os::raw::c_char;
+// use std::cell::{Cell, RefCell};
+// use std::thread;
 
-static B: [u8; 10] = [99, 97, 114, 114, 121, 116, 111, 119,  101, 108];
-static C: [u8; 11] = [116, 104, 97, 110, 107, 115, 102, 105,  115, 104, 0];
+// static B: [u8; 10] = [99, 97, 114, 114, 121, 116, 111, 119,  101, 108];
+// static C: [u8; 11] = [116, 104, 97, 110, 107, 115, 102, 105,  115, 104, 0];
 
-#[derive(Debug)]
-struct Sa {
-    // a: *const i32
-    _data: PhantomData<NonNull<u8>>
-}
+// #[derive(Debug)]
+// struct Sa {
+//     // a: *const i32
+//     _data: PhantomData<NonNull<u8>>
+// }
 
-struct Sb <Slayer>
-where Slayer : Display
-{
-    nm: Slayer,
-}
+// struct Sb <Slayer>
+// where Slayer : Display
+// {
+//     nm: Slayer,
+// }
 
 // impl !Sync for Sa {
     
 // }
 // unsafe impl Send for Sa{}
 
-use std::ops::Sub;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::thread::{ JoinHandle};
-use std::time::Instant;
+// use std::ops::Sub;
+// use std::sync::atomic::{AtomicU64, Ordering};
+// use std::thread::{ JoinHandle};
+// use std::time::Instant;
 
-const N_TIMES: u64 = 10000000;
-const N_THREADS: usize = 10;
+// const N_TIMES: u64 = 10000000;
+// const N_THREADS: usize = 10;
 
-static R: AtomicU64 = AtomicU64::new(0);
+// static R: AtomicU64 = AtomicU64::new(0);
 
-fn add_n_times(n: u64) -> JoinHandle<()> {
-    thread::spawn(move || {
-        for _ in 0..n {
-            R.fetch_add(1, Ordering::Relaxed);
-        }
-    })
-}
+// fn add_n_times(n: u64) -> JoinHandle<()> {
+//     thread::spawn(move || {
+//         for _ in 0..n {
+//             R.fetch_add(1, Ordering::Relaxed);
+//         }
+//     })
+// }
 
+use std::{sync::{Mutex, Arc, Condvar}, thread, time::Duration};
 
 fn main() {
 
-    let (rs, rx) = channel::<i32>();
+    let pair = Arc::new((Mutex::new(false), Mutex::new(false), Condvar::new()));
+    let t1 = {
+        let pair = pair.clone();
+        thread::spawn(move || {
+            let mut start = pair.0.lock().unwrap();
+            while !*start {
+                start = pair.2.wait(start).unwrap();
+            }
+        })
+    };
 
-    for i in 0..5 {
-        
+    let t2 = {
+        let pair = pair.clone();
+        thread::spawn(move || {
+            let mut start = pair.1.lock().unwrap();
+            while !*start {
+                start = pair.2.wait(start).unwrap();
+            }
+        })
+    };
+
+    {
+        thread::sleep(Duration::from_secs(3));
+        let mut start = pair.0.lock().unwrap();
+        *start = true;
+        let mut start1 = pair.1.lock().unwrap();
+        *start1 = true;
+        pair.2.notify_all();
     }
 
+    t1.join().unwrap();
+    t2.join().unwrap();
 }
 
+#[cfg(test)]
+mod tests {
+    use std::{sync::{Mutex, Arc, Condvar}, thread, time::Duration};
+
+    #[test]
+    fn test_1664803969583() {
+        let pair = Arc::new((Mutex::new(false), Mutex::new(false), Condvar::new()));
+        let t1 = {
+            let pair = pair.clone();
+            thread::spawn(move || {
+                let mut start = pair.0.lock().unwrap();
+                while !*start {
+                    start = pair.2.wait(start).unwrap();
+                }
+            })
+        };
+
+        let t2 = {
+            let pair = pair.clone();
+            thread::spawn(move || {
+                let mut start = pair.1.lock().unwrap();
+                while !*start {
+                    start = pair.2.wait(start).unwrap();
+                }
+            })
+        };
+
+        {
+            thread::sleep(Duration::from_secs(3));
+            let mut start = pair.0.lock().unwrap();
+            *start = true;
+            pair.2.notify_all();
+        }
+
+        t1.join().unwrap();
+        t2.join().unwrap();
+    }
+}
 // thread_local!{static FOO: Cell<i32>  = Cell::new(1)};
 
 // FOO.with(|f| {
