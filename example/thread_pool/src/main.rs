@@ -60,8 +60,11 @@ impl ThreadPool {
     pub fn execute<F>(&self, job: F)
         where F: FnOnce() + Send + 'static 
     {
+        // 待执行任务数 + 1
         self.shared_data.queued_count.fetch_add(1, Ordering::SeqCst); // 用了 SeqCst 是为了保证 job.send 的内存顺序吧？
+        //将任务发送给 channel
         self.jobs.send(Box::new(job)).expect("unable to send job into queue ");
+
     }
 
     pub fn join(&self) {
@@ -106,7 +109,7 @@ impl PoolBuilder {
             empty_condvar: Condvar::new(),
             queued_count: AtomicUsize::new(0),
             active_count: AtomicUsize::new(0),
-            max_thread_count: AtomicUsize::new(0),
+            max_thread_count: AtomicUsize::new(num_threads),
             panic_count: AtomicUsize::new(0),
             stack_size: self.thread_stack_size,
         });
@@ -138,11 +141,9 @@ fn spawn_in_pool(shared_data: Arc<ThreadPoolSharedData>) {
                 .active_count.load(Ordering::Acquire);
             let max_thread_count_val = shared_data
                 .max_thread_count.load(Ordering::Relaxed);
-            
             if thread_counter_val >= max_thread_count_val {
                 break;
             }
-
             let message = {
                 let lock = shared_data.job_receiver.lock().expect("unable to lock job_receiver");
                 lock.recv()
@@ -200,12 +201,13 @@ impl<'a> Drop for Sentinel<'a> {
 fn main() {
     let pool = ThreadPool::new(8);
     let test_count = Arc::new(AtomicUsize::new(0));
-    for _ in 0..42 {
+    for _ in 0..12 {
         let test_count = test_count.clone();
         pool.execute(move || {
             test_count.fetch_add(1, Ordering::Relaxed);
         });
     }
     pool.join();
-    assert_eq!(42, test_count.load(Ordering::Relaxed));
+    println!("{}", test_count.load(Ordering::Relaxed));
+    assert_eq!(12, test_count.load(Ordering::Relaxed));
 }

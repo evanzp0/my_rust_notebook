@@ -55,82 +55,44 @@
 //     })
 // }
 
-use std::{sync::{Mutex, Arc, Condvar}, thread, time::Duration};
+use std::{sync::{Mutex, Arc, Condvar, atomic::{AtomicUsize, Ordering}}, thread, time::Duration};
 
 fn main() {
 
-    let pair = Arc::new((Mutex::new(false), Mutex::new(false), Condvar::new()));
+    let pair = Arc::new((Mutex::new(()), Condvar::new()));
+    let count = Arc::new(AtomicUsize::new(2));
     let t1 = {
         let pair = pair.clone();
+        let count = count.clone();
         thread::spawn(move || {
+            // thread::sleep(Duration::from_secs(3));
             let mut start = pair.0.lock().unwrap();
-            while !*start {
-                start = pair.2.wait(start).unwrap();
-            }
-        })
+            count.fetch_sub(1, Ordering::Relaxed);
+            pair.1.notify_all();
+            println!("11");
+        });
     };
 
     let t2 = {
         let pair = pair.clone();
+        let count = count.clone();
         thread::spawn(move || {
-            let mut start = pair.1.lock().unwrap();
-            while !*start {
-                start = pair.2.wait(start).unwrap();
-            }
-        })
-    };
-
-    {
-        thread::sleep(Duration::from_secs(3));
-        let mut start = pair.0.lock().unwrap();
-        *start = true;
-        let mut start1 = pair.1.lock().unwrap();
-        *start1 = true;
-        pair.2.notify_all();
-    }
-
-    t1.join().unwrap();
-    t2.join().unwrap();
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{sync::{Mutex, Arc, Condvar}, thread, time::Duration};
-
-    #[test]
-    fn test_1664803969583() {
-        let pair = Arc::new((Mutex::new(false), Mutex::new(false), Condvar::new()));
-        let t1 = {
-            let pair = pair.clone();
-            thread::spawn(move || {
-                let mut start = pair.0.lock().unwrap();
-                while !*start {
-                    start = pair.2.wait(start).unwrap();
-                }
-            })
-        };
-
-        let t2 = {
-            let pair = pair.clone();
-            thread::spawn(move || {
-                let mut start = pair.1.lock().unwrap();
-                while !*start {
-                    start = pair.2.wait(start).unwrap();
-                }
-            })
-        };
-
-        {
             thread::sleep(Duration::from_secs(3));
             let mut start = pair.0.lock().unwrap();
-            *start = true;
-            pair.2.notify_all();
-        }
+            count.fetch_sub(1, Ordering::Relaxed);
+            pair.1.notify_all();
+            println!("22");
+        });
+    };
 
-        t1.join().unwrap();
-        t2.join().unwrap();
+    let mut start = pair.0.lock().unwrap();
+    while count.load(Ordering::Relaxed) > 0 {
+        println!("== {}", count.load(Ordering::Relaxed));
+        start = pair.1.wait(start).unwrap();
+        println!("..");
     }
 }
+
 // thread_local!{static FOO: Cell<i32>  = Cell::new(1)};
 
 // FOO.with(|f| {
