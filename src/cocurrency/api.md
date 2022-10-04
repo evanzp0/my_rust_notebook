@@ -37,7 +37,7 @@ pub fn wait<'a, T>(
 ) -> LockResult<MutexGuard<'a, T>>
 
 > 阻塞当前线程直到该条件变量接收到一个通知。
-该方法会自动解锁由`guard`参数表示的`mutex`锁并阻塞当前线程。这意味着任何在`mutex`解锁后发生的 notify_one 和 notify_all 方法的调用，都会唤醒该线程，同时该`mutex`锁可被再次使用。
+该方法会自动解锁由`guard`参数表示的`mutex`锁并阻塞当前线程。这意味着任何在`mutex`解锁后发生的 notify_one 和 notify_all 方法的调用，都会唤醒该线程，当wake() 方法返回时，该`mutex`锁被再次锁定。
 
 #### Errors
 如果`Mutex`锁是中毒状态的话，wait 该锁会返回 error

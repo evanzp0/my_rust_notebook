@@ -83,6 +83,8 @@ impl ThreadPool {
         let mut lock = self.shared_data.empty_trigger.lock().unwrap();
         while self.shared_data.has_work() {
             lock = self.shared_data.empty_condvar.wait(lock).unwrap();
+            lock = self.shared_data.empty_trigger.lock().unwrap();
+            println!("wait");
         }
     }
 }
@@ -155,10 +157,10 @@ fn spawn_in_pool(shared_data: Arc<ThreadPoolSharedData>) {
                 break;
             }
             let message = {
-                let lock = shared_data.job_receiver.lock().expect("unable to lock job_receiver"); // block
-                let a = lock.recv(); // bflock
+                let lock = shared_data.job_receiver.lock().expect("unable to lock job_receiver"); // 锁定channel
+                let a = lock.recv(); // 阻塞进程
                 a
-            };
+            }; // 离开时解锁channel
 
             let job = match message {
                 Ok(job) => job,
@@ -171,6 +173,7 @@ fn spawn_in_pool(shared_data: Arc<ThreadPoolSharedData>) {
             job.call_box();  
             shared_data.active_count.fetch_sub(1, Ordering::SeqCst);
             shared_data.no_work_notify_all();
+            println!("notify");
         }
         sentinel.cancel();
     }).unwrap();

@@ -73,25 +73,26 @@ fn main() {
         });
     };
 
-    let t2 = {
-        let pair = pair.clone();
-        let count = count.clone();
-        thread::spawn(move || {
-            thread::sleep(Duration::from_secs(3));
-            let mut start = pair.0.lock().unwrap();
-            count.fetch_sub(1, Ordering::Relaxed);
-            pair.1.notify_all();
-            println!("22");
-        });
-    };
-
     let mut start = pair.0.lock().unwrap();
     while count.load(Ordering::Relaxed) > 0 {
         println!("== {}", count.load(Ordering::Relaxed));
         start = pair.1.wait(start).unwrap();
+        // start = pair.0.lock().unwrap();   // block 
         println!("..");
     }
 }
+
+    // let t2 = {
+    //     let pair = pair.clone();
+    //     let count = count.clone();
+    //     thread::spawn(move || {
+    //         thread::sleep(Duration::from_secs(3));
+    //         let mut start = pair.0.lock().unwrap();
+    //         count.fetch_sub(1, Ordering::Relaxed);
+    //         pair.1.notify_all();
+    //         println!("22");
+    //     });
+    // };
 
 // thread_local!{static FOO: Cell<i32>  = Cell::new(1)};
 
