@@ -215,7 +215,7 @@ impl<'a> Drop for Sentinel<'a> {
 fn main() {
     let pool = ThreadPool::new(8);
     let test_count = Arc::new(AtomicUsize::new(0));
-    for _ in 0..12 {
+    for _ in 0..1 {
         let test_count = test_count.clone();
         pool.execute(move || {
             test_count.fetch_add(1, Ordering::Relaxed);
@@ -223,5 +223,5 @@ fn main() {
     }
     pool.join();
     println!("{}", test_count.load(Ordering::Relaxed));
-    assert_eq!(12, test_count.load(Ordering::Relaxed));
+    assert_eq!(1, test_count.load(Ordering::Relaxed));
 }

@@ -58,29 +58,46 @@
 use std::{sync::{Mutex, Arc, Condvar, atomic::{AtomicUsize, Ordering}}, thread, time::Duration};
 
 fn main() {
-
-    let pair = Arc::new((Mutex::new(()), Condvar::new()));
-    let count = Arc::new(AtomicUsize::new(2));
-    let t1 = {
-        let pair = pair.clone();
-        let count = count.clone();
-        thread::spawn(move || {
-            // thread::sleep(Duration::from_secs(3));
-            let mut start = pair.0.lock().unwrap();
-            count.fetch_sub(1, Ordering::Relaxed);
-            pair.1.notify_all();
-            println!("11");
-        });
-    };
-
-    let mut start = pair.0.lock().unwrap();
-    while count.load(Ordering::Relaxed) > 0 {
-        println!("== {}", count.load(Ordering::Relaxed));
-        start = pair.1.wait(start).unwrap();
-        // start = pair.0.lock().unwrap();   // block 
-        println!("..");
+    use std::thread;
+    use std::time::Duration;
+    use crossbeam_channel::unbounded;
+    
+    let (s1, r1) = unbounded();
+    let (s2, r2) = unbounded();
+    
+    thread::spawn(move || s1.send(10).unwrap());
+    thread::spawn(move || s2.send(20).unwrap());
+    
+    select! {
+        recv(r1) -> msg => assert_eq!(msg, Ok(10)),
+        recv(r2) -> msg => assert_eq!(msg, Ok(20)),
+        default(Duration::from_secs(1)) => println!("timed out"),
     }
 }
+
+
+// let pair = Arc::new((Mutex::new(()), Condvar::new()));
+// let count = Arc::new(AtomicUsize::new(2));
+// let t1 = {
+//     let pair = pair.clone();
+//     let count = count.clone();
+//     thread::spawn(move || {
+//         // thread::sleep(Duration::from_secs(3));
+//         let mut start = pair.0.lock().unwrap();
+//         count.fetch_sub(1, Ordering::Relaxed);
+//         pair.1.notify_all();
+//         println!("11");
+//     });
+// };
+
+// let mut start = pair.0.lock().unwrap();
+// while count.load(Ordering::Relaxed) > 0 {
+//     println!("== {}", count.load(Ordering::Relaxed));
+//     start = pair.1.wait(start).unwrap();
+//     // start = pair.0.lock().unwrap();   // block 
+//     println!("..");
+// }
+
 
     // let t2 = {
     //     let pair = pair.clone();
