@@ -4,6 +4,16 @@ use std::sync::{Arc, Mutex, Condvar};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
+/// 思路就是：
+/// 1、生成一个channel，将发送端放入 thread_pool，thread_pool在join方法中通过 condvar.wait() 等待唤醒；
+/// 2、Build里生成多个线程，和多个持有接收端的 thread_pool_shared_data, 在每个下线程里用闭包获取thread_pool_shared_data的所有权，然后通过channel.recv block线程
+/// 3、通过 thread_pool.execute(fn) 将fn任务发送到 channel中，被获取管道控制权的线程 recv() 并处理。
+/// 4、线程处理完任务后notify_all()，然后继续 recv() 等待。
+/// 5、thread_pool在 condvar.wait()中被唤醒，检查有没有正在执行的线程和待执行任务，如果没有，则退出join()，主线程结束，同时子线程也结束了。
+/// 6、如果子线程在任务处理中有发送恐慌，此线程被结束了，这是通过守卫对象 sentinel 的 drop 方法进行检测，如果发生恐慌会再次创建一个线程进行补偿
+/// 
+/// 
+
 // 定义任务：FnBox ===========================
 trait FnBox {
     fn call_box(self: Box<Self>);
@@ -145,8 +155,9 @@ fn spawn_in_pool(shared_data: Arc<ThreadPoolSharedData>) {
                 break;
             }
             let message = {
-                let lock = shared_data.job_receiver.lock().expect("unable to lock job_receiver");
-                lock.recv()
+                let lock = shared_data.job_receiver.lock().expect("unable to lock job_receiver"); // block
+                let a = lock.recv(); // bflock
+                a
             };
 
             let job = match message {
