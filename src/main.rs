@@ -1,4 +1,5 @@
 #![allow(unused)]
+// #![feature(generators, generator_trait)]
 // #![feature(negative_impls)]
 
 // use std::collections::HashMap;
@@ -55,26 +56,133 @@
 //     })
 // }
 
-use std::{sync::{Mutex, Arc, Condvar, atomic::{AtomicUsize, Ordering}}, thread, time::Duration};
+use std::{marker::PhantomPinned, pin::Pin, ops::Deref};
 
 fn main() {
-    use std::thread;
-    use std::time::Duration;
-    use crossbeam_channel::unbounded;
-    
-    let (s1, r1) = unbounded();
-    let (s2, r2) = unbounded();
-    
-    thread::spawn(move || s1.send(10).unwrap());
-    thread::spawn(move || s2.send(20).unwrap());
-    
-    select! {
-        recv(r1) -> msg => assert_eq!(msg, Ok(10)),
-        recv(r2) -> msg => assert_eq!(msg, Ok(20)),
-        default(Duration::from_secs(1)) => println!("timed out"),
+
+    struct Ms {
+        a: Box<i32>,
+        b: * const Box<i32>,
+        _marker: PhantomPinned,
     }
+
+    let mut m1 = Ms {
+        a: Box::new(1),
+        b: std::ptr::null(),
+        _marker: PhantomPinned,
+    };
+
+    let mut pin_m1;
+    unsafe {
+        pin_m1 = Pin::new_unchecked(&m1);
+    }
+
+    let mut m2 = Ms {
+        a: Box::new(2),
+        b: std::ptr::null(),
+        _marker: PhantomPinned,
+    };
+
+    m2.b = &m2.a as *const Box<i32>;
+    
+    let mut pin_m2;
+    unsafe {
+        pin_m2 = Pin::new_unchecked(&m2);
+    }
+    // pin_m2.a =  Box::new(3); // error
+
+    struct Mt {
+        a: Box<i32>,
+    }
+
+    let mut m3 = Mt {
+        a: Box::new(2),
+    };
+    
+    let mut pin_m3 = Pin::new(&mut m3);
+    pin_m3.a =  Box::new(3);
+
+
+    impl Deref for Mt {
+        type Target = i32;
+
+        fn deref(&self) -> &Self::Target {
+            todo!()
+        }
+    }
+
+
 }
 
+fn meth() {
+    
+
+    #[derive(Debug)]
+    struct Ms {
+        a: Box<i32>,
+        b: * const Box<i32>,
+    }
+
+    let mut m1 = Ms {
+        a: Box::new(1),
+        b: std::ptr::null(),
+    };
+
+    m1.b = &m1.a as *const Box<i32>;
+    unsafe {
+        println!("{}", *m1.b);
+        println!("{:p}, {:p}", &m1.a, m1.a);
+        println!("{:p}, {:p}, {:p}", &m1.b, m1.b, *m1.b);
+    }
+
+    let mut m2 = Ms {
+        a: Box::new(2),
+        b: std::ptr::null(),
+    };
+
+    m2.b = &m2.a as *const Box<i32>;
+    unsafe {
+        println!("{}", *m2.b);
+        println!("{:p}, {:p}", &m2.a, m2.a);
+        println!("{:p}, {:p}, {:p}", &m2.b, m2.b, *m2.b);
+    }
+
+    m2 = m1;
+    m2.a = Box::new(3);
+    unsafe {
+        println!("{}", *m2.b);
+        println!("{:p}, {:p}", &m2.a, m2.a);
+        println!("{:p}, {:p}, {:p}", &m2.b, m2.b, *m2.b);
+    }
+
+// 1
+// 0xb73b2ff170, 0x22943d2dd90
+// 0xb73b2ff178, 0xb73b2ff170, 0x22943d2dd90
+// 2
+// 0xb73b2ff288, 0x22943d2ddb0
+// 0xb73b2ff290, 0xb73b2ff288, 0x22943d2ddb0
+// 1137892816
+// 0xb73b2ff288, 0x22943d2ddb0
+// 0xb73b2ff290, 0xb73b2ff170, 0x22943d2dd90
+
+}
+
+// use std::{sync::{Mutex, Arc, Condvar, atomic::{AtomicUsize, Ordering}}, thread, time::Duration};
+// use crossbeam::select;
+// use std::thread;
+// use std::time::Duration;
+// use crossbeam_channel::unbounded;
+
+// let (s1, r1) = unbounded();
+// let (s2, r2) = unbounded();
+
+// thread::spawn(move || {s1.send(10).unwrap(); Duration::from_secs(2);});
+// thread::spawn(move || {s2.send(20).unwrap(); Duration::from_secs(2); });
+// select! {
+//     recv(r1) -> msg =>{ assert_eq!(msg, Ok(10)); println!("{:?}", msg)},
+//     recv(r2) -> msg => { assert_eq!(msg, Ok(20)); println!("{:?}", msg) },
+//     default(Duration::from_secs(1)) => println!("timed out"),
+// }
 
 // let pair = Arc::new((Mutex::new(()), Condvar::new()));
 // let count = Arc::new(AtomicUsize::new(2));
