@@ -35,3 +35,29 @@ Box智能指针的内存分配，Box::leak() 后返回的堆上的对象是'stat
     println!("b point to addr: {:p}", b);
     println!("b raw addr: {:p}", b.as_ptr());
 ```
+a 所有权 move 后，栈上的内存并不会被回收
+```rust
+   let a = Box::new(1);
+    let ptr_a = &a as *const Box<i32>;   
+    unsafe {
+        println!("{:p}, {:p}, {:p}, {}, {}", &a, a, ptr_a, a, *ptr_a);
+    }
+
+    let b = a;
+    unsafe {
+        println!("{:p}, {:p}, {:p}, {}, {}", &b,  b, ptr_a, b, *ptr_a);
+    }
+
+    let c = Box::new(2);
+    println!("{:p}, {:p}, {}", &c,  c, c);
+
+    unsafe {
+        println!("{:p}, {}", ptr_a, *ptr_a);
+    }
+
+// a 所有权 move 后，栈上的内存并不会被回收
+// 0xd6e6dbf4a8, 0x24145e8dde0, 0xd6e6dbf4a8, 1, 1
+// 0xd6e6dbf540, 0x24145e8dde0, 0xd6e6dbf4a8, 1, 1
+// 0xd6e6dbf5d0, 0x24145e8de00, 2
+// 0xd6e6dbf4a8, 1
+```

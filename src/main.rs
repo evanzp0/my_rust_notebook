@@ -56,62 +56,57 @@
 //     })
 // }
 
-use std::{marker::PhantomPinned, pin::Pin, ops::Deref};
+use std::{marker::PhantomPinned, pin::Pin, ops::Deref, future::Future, any::Any};
+
+struct A;
+impl Drop for A {
+    fn drop(&mut self) {
+        println!("drop A");
+    }
+}
+
+impl A {
+    fn get_b(self) -> B {
+        println!("get_b");
+        B
+    }
+}
+
+struct B;
+impl Drop for B {
+    fn drop(&mut self) {
+        println!("drop B");
+    }
+
+}
+
+impl B {
+    fn get_c(self) -> C {
+        println!("get_c");
+        C
+    }
+}
+
+struct C;
+impl Drop for C {
+    fn drop(&mut self) {
+        println!("drop C");
+    }
+}
+
+impl C {
+    fn end_c(&self) -> bool {
+        true
+    }
+}
 
 fn main() {
-
-    struct Ms {
-        a: Box<i32>,
-        b: * const Box<i32>,
-        _marker: PhantomPinned,
+    let a = A;
+    match a.get_b().get_c().end_c() {
+        true => println!("end C"),
+        false => println!("end C?"),
     }
-
-    let mut m1 = Ms {
-        a: Box::new(1),
-        b: std::ptr::null(),
-        _marker: PhantomPinned,
-    };
-
-    let mut pin_m1;
-    unsafe {
-        pin_m1 = Pin::new_unchecked(&m1);
-    }
-
-    let mut m2 = Ms {
-        a: Box::new(2),
-        b: std::ptr::null(),
-        _marker: PhantomPinned,
-    };
-
-    m2.b = &m2.a as *const Box<i32>;
-    
-    let mut pin_m2;
-    unsafe {
-        pin_m2 = Pin::new_unchecked(&m2);
-    }
-    // pin_m2.a =  Box::new(3); // error
-
-    struct Mt {
-        a: Box<i32>,
-    }
-
-    let mut m3 = Mt {
-        a: Box::new(2),
-    };
-    
-    let mut pin_m3 = Pin::new(&mut m3);
-    pin_m3.a =  Box::new(3);
-
-
-    impl Deref for Mt {
-        type Target = i32;
-
-        fn deref(&self) -> &Self::Target {
-            todo!()
-        }
-    }
-
-
+    println!("main end");
 }
 
 fn meth() {
@@ -131,7 +126,7 @@ fn meth() {
     m1.b = &m1.a as *const Box<i32>;
     unsafe {
         println!("{}", *m1.b);
-        println!("{:p}, {:p}", &m1.a, m1.a);
+        println!("{:p}, {:p}, {}", &m1.a, m1.a, m1.a);
         println!("{:p}, {:p}, {:p}", &m1.b, m1.b, *m1.b);
     }
 
@@ -143,17 +138,31 @@ fn meth() {
     m2.b = &m2.a as *const Box<i32>;
     unsafe {
         println!("{}", *m2.b);
-        println!("{:p}, {:p}", &m2.a, m2.a);
+        println!("{:p}, {:p}, {}", &m2.a, m2.a, m2.a);
         println!("{:p}, {:p}, {:p}", &m2.b, m2.b, *m2.b);
     }
 
     m2 = m1;
-    m2.a = Box::new(3);
+    // m2.a = Box::new(3);
     unsafe {
         println!("{}", *m2.b);
-        println!("{:p}, {:p}", &m2.a, m2.a);
+        println!("{:p}, {:p}, {}", &m2.a, m2.a, m2.a);
         println!("{:p}, {:p}, {:p}", &m2.b, m2.b, *m2.b);
     }
+
+    // 1
+    // 0xbf3bbbf0e8, 0x1c511a3ddc0, 1
+    // 0xbf3bbbf0f0, 0xbf3bbbf0e8, 0x1c511a3ddc0
+    // 2
+    // 0xbf3bbbf210, 0x1c511a3dde0, 2
+    // 0xbf3bbbf218, 0xbf3bbbf210, 0x1c511a3dde0
+    // 1
+    // 0xbf3bbbf210, 0x1c511a3ddc0, 1
+    // 0xbf3bbbf218, 0xbf3bbbf0e8, 0x1c511a3ddc0
+
+
+
+// m2.a = Box::new(3); 加这行后
 
 // 1
 // 0xb73b2ff170, 0x22943d2dd90
