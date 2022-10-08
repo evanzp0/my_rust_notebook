@@ -1,7 +1,7 @@
 ### 链式调用
 
 中间过程，如果对象`self`被消费了，则中间函数返回时`drop`该`self`；
-最后一个函数的返回值在分号后或者`match`等`block`结束时被`drop`
+最后一个函数的返回值在分号后`match`等`block`结束时被`drop`
 
 ```rust
 struct A;
@@ -27,7 +27,7 @@ impl Drop for B {
 }
 
 impl B {
-    fn get_c(self) -> C {
+    fn get_c(&self) -> C {
         println!("get_c");
         C
     }
@@ -48,10 +48,11 @@ impl C {
 
 fn main() {
     let a = A;
-    match a.get_b().get_c().end_c() {
-        true => println!("end C"),
-        false => println!("end C?"),
-    }
+    a.get_b().get_c().end_c()
+    // match a.get_b().get_c().end_c() {
+    //     true => println!("end C"),
+    //     false => println!("end C?"),
+    // }
     println!("main end");
 }
 ```
